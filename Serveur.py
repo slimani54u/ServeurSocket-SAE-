@@ -29,7 +29,7 @@ class Discussion(Base):
     __table__ = Table('Discussion', metadata, autoload_with=engine)
 
 class Droit_Salon(Base):
-    __table__ = Table('Droit_salon', metadata, autoload_with=engine)
+    __table__ = Table('Droit_Salon', metadata, autoload_with=engine)
 
 class Server:
     def __init__(self, host, port):
@@ -172,7 +172,7 @@ class Server:
                     _, alias = data.decode().split("/", 2)[:2]
         except Exception as e:
             print(f"Erreur lors de la gestion du client {client_address}: {e}")
-            if "Une connexion existante a dû être fermée par l’hôte distant" in str(e) and alias:
+            if alias:
                 print(f"Le client {alias} s'est déconnecté de manière inattendue.")
                 self.update_user_status(alias, "déconnecté")
                 self.clients.pop(alias, None)

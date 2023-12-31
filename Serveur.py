@@ -256,11 +256,11 @@ class Server:
                 data = client_socket.recv(1024)
                 if not data:
                     break
-                    # Le client s'est déconnecté proprement
+                    
 
 
 
-                self.handle_message(data, client_address, client_socket, self.clients)
+                self.handle_message(data, client_address, client_socket)
 
 
 

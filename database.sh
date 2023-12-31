@@ -11,7 +11,7 @@ read -s DB_PASS
 DB_NAME="serveur_discussion"
 
 # Chemin du fichier SQL
-SQL_FILE="Modelerelationnel.sql"
+SQL_FILE="ModeleRelationnel.sql"
 
 # Créer la base de données
 mysql -u$DB_USER -p$DB_PASS -e "CREATE DATABASE IF NOT EXISTS $DB_NAME;"

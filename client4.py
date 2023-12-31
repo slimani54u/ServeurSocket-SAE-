@@ -14,6 +14,12 @@ button_style = "background-color: #007bff; color: white; padding: 5px;"
 input_style = "border: 1px solid #ced4da; padding: 5px; border-radius: 3px;"
 label_style = "color: #212529;"
 class LoginPage(QWidget):
+    """
+        La page de connexion de l'application client. Permet aux utilisateurs de se connecter ou de créer un nouveau compte.
+
+        :param stacked_widget: Le widget empilé pour la navigation entre les pages.
+        :param client_socket: Le socket client pour communiquer avec le serveur.
+        """
     def __init__(self, stacked_widget, client_socket):
         super().__init__()
         self.stacked_widget = stacked_widget
@@ -21,6 +27,9 @@ class LoginPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        """
+            Initialise l'interface utilisateur de la page de connexion. Définit les champs, boutons et mise en page.
+                """
         # Définir une police générale pour la page
         font = QFont("Arial", 12)
 
@@ -63,6 +72,11 @@ class LoginPage(QWidget):
         self.create_account_button.clicked.connect(self.show_create_account)
 
     def show_error_message(self, message):
+        """
+                Affiche un message d'erreur dans une boîte de dialogue.
+
+                :param message: Le message d'erreur à afficher.
+                """
         error_dialog = QMessageBox()
 
         error_dialog.setText(message)
@@ -70,6 +84,9 @@ class LoginPage(QWidget):
         error_dialog.exec()
 
     def login(self):
+        """
+                Tente de se connecter au serveur avec les informations d'identification fournies. Change la page en cas de succès.
+                """
         alias = self.alias.text()
         password = self.password.text()
 
@@ -94,9 +111,18 @@ class LoginPage(QWidget):
             self.show_error_message("Erreur lors de la connexion au serveur.")
 
     def show_create_account(self):
+        """
+            Change vers la page de création de compte.
+                """
         self.stacked_widget.setCurrentIndex(1)  # Passer à la page de création de compte
 
 class CreateAccountPage(QWidget):
+    """
+        La page de création de compte de l'application client. Permet aux utilisateurs de créer un nouveau compte.
+
+        :param stacked_widget: Le widget empilé pour la navigation entre les pages.
+        :param client_socket: Le socket client pour communiquer avec le serveur.
+        """
     def __init__(self, stacked_widget, client_socket):
         super().__init__()
         self.stacked_widget = stacked_widget
@@ -104,6 +130,9 @@ class CreateAccountPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        """
+            Initialise l'interface utilisateur pour la création de compte.
+                """
         self.alias_input = QLineEdit(self)
         self.nom_input = QLineEdit(self)
         self.prenom_input = QLineEdit(self)
@@ -131,12 +160,20 @@ class CreateAccountPage(QWidget):
         self.setLayout(layout)
 
     def show_error_message(self, message):
+        """
+                Affiche un message d'erreur dans une boîte de dialogue.
+
+                :param message: Le message d'erreur à afficher.
+                """
         error_dialog = QMessageBox()
 
         error_dialog.setText(message)
         error_dialog.setWindowTitle("Erreur de Création")
         error_dialog.exec()
     def create_account(self):
+        """
+            Envoie une demande de création de compte au serveur et gère la réponse.
+                """
         prenom = self.prenom_input.text()
         nom = self.nom_input.text()
         alias = self.alias_input.text()
@@ -160,10 +197,18 @@ class CreateAccountPage(QWidget):
                 self.show_error_message(response)
 
     def return_to_login(self):
+        """
+            Retourne à la page de connexion.
+                """
         self.stacked_widget.setCurrentIndex(0)  # Revenir à la page de connexion
 
 class MessagingPage(QWidget):
+    """
+        La page de messagerie de l'application client. Permet aux utilisateurs d'envoyer des messages privés ou dans des salons.
 
+        :param client_socket: Le socket client pour communiquer avec le serveur.
+        :param alias_source: L'alias de l'utilisateur actuellement connecté.
+        """
     # signal pour erreur
     error_signal = pyqtSignal(str)
     shutdown_signal = pyqtSignal()
@@ -179,6 +224,9 @@ class MessagingPage(QWidget):
         self.shutdown_signal.connect(self.handle_shutdown)
 
     def init_ui(self):
+        """
+            Initialise l'interface utilisateur de la page de messagerie.
+                """
         # Widgets pour envoyer des messages privés
         self.alias_destinataire_input = QLineEdit(self)
         self.message_prive_input = QLineEdit(self)
@@ -246,17 +294,31 @@ class MessagingPage(QWidget):
 
 
     def show_error(self, message):
+        """
+                Affiche un message d'erreur dans une boîte de dialogue.
+
+                :param message: Le message d'erreur à afficher.
+                """
         QMessageBox.critical(self, "Erreur", message)
     def select_destinataire(self):
+        """
+                Envoie un message privé à l'utilisateur sélectionné.
+                """
         alias_destinataire = self.alias_destinataire_input.text()
         message_priv = self.message_prive_input.text()
         self.client_socket.send(f"MP/{alias_destinataire}/{self.alias_source}/>>{message_priv}".encode())
 
     def handle_shutdown(self):
+        """
+            Gère la fermeture de l'application lors de la réception d'un signal d'arrêt du serveur.
+                """
         # Logique pour gérer la fermeture de l'interface utilisateur
         self.client_socket.close()
         QApplication.quit()
     def receive_message(self):
+        """
+                Thread pour recevoir les messages du serveur et les afficher dans l'interface utilisateur.
+                """
         while True:
             data = self.client_socket.recv(1024)
             if data:
@@ -291,22 +353,36 @@ class MessagingPage(QWidget):
                 break
 
     def select_salon(self):
+        """
+            Envoie un message dans le salon sélectionné.
+                """
         selected_salon = self.salon_box.currentText()
         message_salon = self.message_salon_input.text()  # Récupérer le message du salon depuis le champ de texte
         self.client_socket.send(f"SALON/{selected_salon}/{self.alias_source}/>>{message_salon}".encode())
         print(f"SALON/{selected_salon}/{self.alias_source}/>>{message_salon}")
 
     def demande_acces_salon(self):
+        """
+                Envoie une demande d'accès à un salon au serveur.
+                """
         selected_salon = self.salon_box.currentText()
         self.client_socket.send(f"DEMANDE_ACCES_SALON/{selected_salon}/{self.alias_source}".encode())
 
 class DemandesAccesTab(QWidget):
+    """
+       Un onglet dans l'interface utilisateur du client pour gérer les demandes d'accès aux salons.
+
+       :param client_socket: Le socket client pour communiquer avec le serveur.
+       """
     def __init__(self, client_socket):
         super().__init__()
         self.client_socket = client_socket
         self.init_ui()
 
     def init_ui(self):
+        """
+            Initialise l'interface utilisateur pour l'onglet des demandes d'accès.
+                """
         # Widget de liste pour afficher les demandes
         self.demandes_list_widget = QListWidget(self)
 
@@ -324,11 +400,19 @@ class DemandesAccesTab(QWidget):
         self.setLayout(layout)
 
     def update_demandes_list(self, demande_text):
+        """
+                Met à jour la liste des demandes d'accès avec une nouvelle demande.
+
+                :param demande_text: Le texte de la demande à ajouter à la liste.
+                """
         # Ajouter la nouvelle demande à la liste
         item = QListWidgetItem(demande_text)
         self.demandes_list_widget.addItem(item)
 
     def accepter_demande(self):
+        """
+            Accepte la demande d'accès sélectionnée et envoie une confirmation au serveur.
+                """
         # Récupérer la demande sélectionnée dans la liste
         demande_item = self.demandes_list_widget.currentItem()
         if demande_item:
@@ -353,6 +437,9 @@ class DemandesAccesTab(QWidget):
             self.demandes_list_widget.takeItem(row)
 
     def refuser_demande(self):
+        """
+                Refuse la demande d'accès sélectionnée et envoie une notification de refus au serveur.
+                """
         # Récupérer la demande sélectionnée dans la liste
         demande_item = self.demandes_list_widget.currentItem()
         if demande_item:
@@ -368,6 +455,12 @@ class DemandesAccesTab(QWidget):
             self.demandes_list_widget.takeItem(row)
 
 class StatusPage(QWidget):
+    """
+        Un onglet dans l'interface utilisateur du client pour afficher les statuts des utilisateurs.
+
+        :param client_socket: Le socket client pour communiquer avec le serveur.
+        :param alias_source: L'alias de l'utilisateur actuellement connecté.
+        """
     def __init__(self, client_socket, alias_source):
         super().__init__()
         self.client_socket = client_socket
@@ -376,11 +469,19 @@ class StatusPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        """
+            Initialise l'interface utilisateur pour l'onglet des statuts des utilisateurs.
+                """
         layout = QVBoxLayout(self)
         layout.addWidget(self.user_status_list)
         self.setLayout(layout)
 
     def update_status(self, status_data):
+        """
+                Met à jour la liste des statuts des utilisateurs.
+
+                :param status_data: Les données des statuts des utilisateurs à afficher.
+                """
         self.user_status_list.clear()  # Effacer les entrées existantes
         for status in status_data.split(','):
             alias, user_status = status.split(':')
@@ -390,6 +491,12 @@ class StatusPage(QWidget):
 
 if __name__ == '__main__':
     # Initialisation et exécution de l'application
+    """
+        Point d'entrée principal pour l'application cliente.
+
+        L'application cliente démarre en se connectant au serveur spécifié et en affichant l'interface de connexion.
+        Les arguments nécessaires sont l'adresse IP et le port du serveur.
+        """
     if len(sys.argv) != 3:
         print("Utilisation: python client.py <adresse_ip> <port>")
         sys.exit(1)

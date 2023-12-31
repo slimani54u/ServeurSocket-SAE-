@@ -17,21 +17,39 @@ engine = create_engine(db_connection_string)
 metadata.create_all(engine)
 
 class Authentification(Base):
+    """
+        Représente la table 'Authentification' dans la base de données. Cette classe sert à stocker les informations d'authentification des utilisateurs, y compris leurs alias, mots de passe et autres informations personnelles.
+        """
     __table__ = Table('Authentification', metadata, autoload_with=engine)
 
 class Status(Base):
+    """
+        Modélise la table 'Status' dans la base de données. Cette classe est utilisée pour suivre le statut de connexion des utilisateurs (par exemple, connecté ou déconnecté) et enregistrer la dernière fois qu'ils ont modifié leur statut.
+        """
     __table__ = Table('Status', metadata, autoload_with=engine)
 
 class Salon(Base):
+    """
+        Correspond à la table 'Salon' dans la base de données. Utilisée pour gérer les différents salons de discussion, cette classe stocke les informations liées aux différents salons, comme leur nom et les messages échangés.
+        """
     __table__ = Table('Salon', metadata, autoload_with=engine)
 
 class Discussion(Base):
+    """
+        Représente la table 'Discussion' dans la base de données. Elle est utilisée pour stocker l'historique des conversations privées entre les utilisateurs, y compris l'expéditeur, le destinataire et le contenu des messages.
+        """
     __table__ = Table('Discussion', metadata, autoload_with=engine)
 
 class Droit_Salon(Base):
+    """
+       Modèle la table 'Droit_Salon' dans la base de données. Cette classe gère les droits d'accès des utilisateurs aux différents salons de discussion, déterminant quels salons ils peuvent voir ou dans lesquels ils peuvent poster.
+       """
     __table__ = Table('Droit_Salon', metadata, autoload_with=engine)
 
 class Server:
+    """
+        Classe principale pour la gestion du serveur de discussion. Elle initialise le serveur, gère les connexions et déconnexions des clients, traite les messages reçus et maintient l'état global du serveur.
+        """
     def __init__(self, host, port):
         self.message_salon_input = None
         self.salon_box = None
@@ -45,6 +63,11 @@ class Server:
         print(f"Serveur en attente sur {self.host}:{self.port}")
 
     def start(self):
+        """
+            Lance le serveur et attend les connexions entrantes des clients. Cette méthode initialise également un thread séparé pour écouter les commandes d'arrêt du serveur.
+
+            Le serveur est configuré pour accepter les connexions entrantes jusqu'à ce qu'une commande d'arrêt soit reçue. Chaque client connecté est géré par un thread séparé. En cas de timeout ou d'autres exceptions, le serveur continue son fonctionnement normal, à l'exception des erreurs inattendues qui sont imprimées sur la console.
+            """
         self.server_socket.settimeout(1)  # Définir un timeout
 
         shutdown_thread = threading.Thread(target=self.listen_for_shutdown_command)
@@ -64,6 +87,19 @@ class Server:
         self.shutdown_server()
 
     def listen_for_shutdown_command(self):
+        """
+           Écoute en continu pour des commandes administratives via l'entrée standard.
+
+           Cette méthode gère les commandes suivantes :
+           - "kill" : Arrête le serveur.
+           - "ban <identifiant>" : Bannit l'utilisateur spécifié.
+           - "kick <identifiant> <durée>" : Expulse l'utilisateur spécifié pour une durée donnée (en heures).
+           - "unban <identifiant>" : Débannit l'utilisateur spécifié.
+           - "unkick <identifiant>" : Annule l'expulsion de l'utilisateur spécifié.
+
+           Les commandes sont lues à partir de l'entrée standard et traitées en fonction de leur type.
+           Les actions de ban, kick, unban et unkick sont déléguées aux méthodes correspondantes de la classe.
+           """
         while True:
             command = input("Entrez une commande: ")
             args = command.split()
@@ -94,6 +130,16 @@ class Server:
                 print(f"Expulsion de l'utilisateur {args[1]} annulée.")
 
     def unkick_user(self, identifier):
+        """
+           Annule l'expulsion d'un utilisateur du serveur.
+
+           Cette méthode recherche un utilisateur dans la base de données, soit par son alias, soit par son adresse IP.
+           Si l'utilisateur est trouvé, la date d'expiration de son expulsion est réinitialisée à None,
+           permettant ainsi à l'utilisateur de se reconnecter au serveur.
+
+           :param identifier: L'alias ou l'adresse IP de l'utilisateur à réintégrer.
+           :type identifier: str
+           """
         session = sessionmaker(bind=engine)()
         user = session.query(Authentification).filter(
             (Authentification.alias == identifier) | (Authentification.adresse_ip == identifier)).first()
@@ -106,6 +152,16 @@ class Server:
         session.close()
 
     def unban_user(self, identifier):
+        """
+            Annule le bannissement d'un utilisateur du serveur.
+
+            Cette méthode recherche un utilisateur dans la base de données, soit par son alias, soit par son adresse IP.
+            Si l'utilisateur est trouvé, son état de bannissement est réinitialisé à False, permettant ainsi à l'utilisateur
+            de se reconnecter au serveur.
+
+            :param identifier: L'alias ou l'adresse IP de l'utilisateur à débannir.
+            :type identifier: str
+            """
         session = sessionmaker(bind=engine)()
         user = session.query(Authentification).filter(
             (Authentification.alias == identifier) | (Authentification.adresse_ip == identifier)).first()
@@ -118,6 +174,16 @@ class Server:
         session.close()
 
     def ban_user(self, identifier):
+        """
+            Bannit un utilisateur du serveur.
+
+            Cette méthode permet de rechercher un utilisateur dans la base de données, soit par son alias, soit par son adresse IP.
+            Si l'utilisateur est trouvé, son état de bannissement est modifié à True, empêchant ainsi l'utilisateur
+            de se reconnecter au serveur.
+
+            :param identifier: L'alias ou l'adresse IP de l'utilisateur à bannir.
+            :type identifier: str
+            """
         session = sessionmaker(bind=engine)()
         user = session.query(Authentification).filter(
             (Authentification.alias == identifier) |(Authentification.adresse_ip == identifier)).first()
@@ -129,6 +195,18 @@ class Server:
         session.close()
 
     def kick_user(self, identifier, duration):
+        """
+            Expulse temporairement un utilisateur du serveur.
+
+            Cette méthode recherche un utilisateur dans la base de données par son alias ou son adresse IP. Si l'utilisateur est trouvé,
+            son temps d'expulsion est défini pour une durée spécifique. L'utilisateur ne pourra pas se reconnecter au serveur
+            jusqu'à ce que cette période expire.
+
+            :param identifier: L'alias ou l'adresse IP de l'utilisateur à expulser.
+            :type identifier: str
+            :param duration: La durée de l'expulsion en heures.
+            :type duration: int
+            """
         session = sessionmaker(bind=engine)()
         user = session.query(Authentification).filter(
             (Authentification.alias == identifier) |(Authentification.adresse_ip == identifier)).first()
@@ -141,7 +219,13 @@ class Server:
         session.close()
 
     def shutdown_server(self):
-        # Envoyer un message à tous les clients pour les informer de l'arrêt
+        """
+            Arrête le serveur en envoyant un message de fermeture à tous les clients connectés.
+
+            Cette méthode parcourt tous les clients connectés, envoie un message pour les informer de l'arrêt imminent du serveur,
+            et ferme les sockets client. Elle met à jour le statut des utilisateurs comme 'déconnecté' dans la base de données
+            avant de fermer le socket du serveur.
+            """
         for alias, client_socket in self.clients.items():
             try:
                 client_socket.send("ERROR/SERVER_SHUTDOWN si  nous n'arretez pas le client dans 10 secondes il s'arretera automatiquement pour permettre l'arret du serveur".encode())
@@ -154,6 +238,18 @@ class Server:
         self.server_socket.close()
         print("Serveur arrêté.")
     def handle_client(self, client_socket, client_address):
+        """
+            Gère la communication avec un client connecté.
+
+            Cette méthode est appelée dans un thread séparé pour chaque client qui se connecte au serveur.
+            Elle écoute les messages entrants du client, les traite et répond en conséquence.
+            En cas de déconnexion inattendue du client, la méthode met à jour son statut et libère les ressources.
+
+            :param client_socket: Le socket du client connecté.
+            :type client_socket: socket.socket
+            :param client_address: L'adresse du client connecté.
+            :type client_address: tuple
+            """
         alias = None
         try:
             while True:
@@ -188,6 +284,17 @@ class Server:
 
 
     def update_user_status(self, alias, status):
+        """
+            Met à jour le statut de connexion d'un utilisateur dans la base de données.
+
+            Cette méthode trouve l'utilisateur dans la base de données par son alias et met à jour son statut
+            de connexion ainsi que le timestamp de la dernière modification.
+
+            :param alias: L'alias de l'utilisateur.
+            :type alias: str
+            :param status: Le nouveau statut de connexion.
+            :type status: str
+            """
         session = sessionmaker(bind=engine)()
         user = session.query(Status).filter_by(alias=alias).first()
         if user:
@@ -202,7 +309,20 @@ class Server:
 
 
 
-    def handle_message(self, data, client_address, client_socket, clients):
+    def handle_message(self, data, client_address, client_socket):
+        """
+            Traite un message reçu d'un client.
+
+            Cette méthode détermine le type de message reçu (création d'un utilisateur, login, message privé, etc.)
+            et appelle la fonction appropriée pour gérer la demande.
+
+            :param data: Les données reçues du client.
+            :type data: bytes
+            :param client_address: L'adresse du client.
+            :type client_address: tuple
+            :param client_socket: Le socket du client.
+            :type client_socket: socket.socket
+            """
         text = data.decode()
 
         if text.startswith("CREATE"):
@@ -219,6 +339,15 @@ class Server:
             self.valid_admin(text, client_socket)
 
     def send_user_statuses(self, client_socket):
+        """
+            Envoie les statuts de connexion de tous les utilisateurs au client spécifié.
+
+            Cette méthode récupère les statuts de connexion de tous les utilisateurs dans la base de données,
+            les formate en un message unique, et les envoie au client spécifié.
+
+            :param client_socket: Le socket du client auquel envoyer les statuts.
+            :type client_socket: socket.socket
+            """
         session = sessionmaker(bind=engine)()
         statuses = session.query(Status).all()
         status_message = "STATUS_UPDATE/" + ",".join([f"{user.alias}:{user.status_connexion}" for user in statuses])
@@ -226,6 +355,17 @@ class Server:
         session.close()
 
     def valid_admin(self,texte, client_socket):
+        """
+            Traite la demande d'administration d'un salon.
+
+            Cette méthode est appelée lorsqu'un utilisateur demande des droits d'administration sur un salon spécifique.
+            Elle vérifie les droits de l'utilisateur et met à jour ses droits si nécessaire.
+
+            :param texte: Le texte contenant l'alias de l'utilisateur et le nom du salon.
+            :type texte: str
+            :param client_socket: Le socket du client demandeur.
+            :type client_socket: socket.socket
+            """
         alias=texte.split("/")[1]
         salon=texte.split("/")[2]
         if salon == "Comptabilité":
@@ -244,6 +384,17 @@ class Server:
         client_socket.send("DEMANDE_ACCES_SALON_SUCCESS/Access validé.".encode())
 
     def acces_salon(self, texte, client_socket):
+        """
+            Gère la demande d'accès à un salon.
+
+            Cette méthode vérifie si l'utilisateur demandeur a les droits pour accéder au salon spécifié.
+            Elle envoie une réponse appropriée au client, soit confirmant l'accès, soit informant de l'attente de validation par un administrateur.
+
+            :param texte: Le texte contenant le nom du salon et l'alias de l'utilisateur demandeur.
+            :type texte: str
+            :param client_socket: Le socket du client demandeur.
+            :type client_socket: socket.socket
+            """
         salon = texte.split("/")[1]
         alias_source = texte.split("/")[2]
 
@@ -290,6 +441,17 @@ class Server:
 
 
     def envoi_salon(self, texte, client_socket):
+        """
+            Gère l'envoi de messages dans un salon spécifique.
+
+            Cette méthode vérifie si l'utilisateur a le droit d'envoyer des messages dans le salon demandé.
+            Si autorisé, elle envoie le message à tous les utilisateurs ayant accès à ce salon et enregistre le message dans la base de données.
+
+            :param texte: Le texte contenant le nom du salon, l'alias de l'expéditeur et le message.
+            :type texte: str
+            :param client_socket: Le socket du client envoyant le message.
+            :type client_socket: socket.socket
+            """
         # Récupérer les informations du texte
         selected_salon = texte.split("/")[1]
         alias_source = texte.split("/")[2]
@@ -370,6 +532,15 @@ class Server:
         session.close()
 
     def messagePrive(self, text):
+        """
+    Gère l'envoi de messages privés entre utilisateurs.
+
+    Cette méthode envoie un message privé d'un utilisateur à un autre et enregistre la conversation dans la base de données.
+    Elle gère également le cas où le destinataire n'est pas connecté ou n'existe pas.
+
+    :param text: Le texte contenant les alias de l'expéditeur et du destinataire, ainsi que le message.
+    :type text: str
+    """
         try:
             dest_alias = text.split("/")[1]
             sender_alias = text.split("/")[2]
@@ -403,6 +574,19 @@ class Server:
             print(f"Erreur lors de la gestion du message privé : {e}")
 
     def create_new_user(self, text, client_address, client_socket):
+        """
+            Crée un nouvel utilisateur dans la base de données.
+
+            Cette méthode crée un nouvel utilisateur avec les informations fournies et définit ses droits et son statut par défaut.
+            Elle gère également les cas où l'alias est déjà pris ou si les informations sont insuffisantes.
+
+            :param text: Le texte contenant les informations de l'utilisateur (adresse IP, alias, nom, prénom, mot de passe).
+            :type text: str
+            :param client_address: L'adresse du client effectuant la requête.
+            :type client_address: str
+            :param client_socket: Le socket du client effectuant la requête.
+            :type client_socket: socket.socket
+            """
         if text.startswith("CREATE"):
             ip_address = str(client_address).split("'")[1]
             alias = text.split("/")[1]
@@ -441,6 +625,17 @@ class Server:
                 client_socket.send("CREATE_FAILURE alias ou mot de passe trop court".encode())
 
     def login(self, text, client_socket):
+        """
+            Gère le processus de connexion d'un utilisateur.
+
+            Cette méthode vérifie les informations de connexion (alias et mot de passe) et le statut de l'utilisateur (banni ou expulsé).
+            En cas de succès, elle envoie une confirmation au client et met à jour le statut de l'utilisateur dans la base de données.
+
+            :param text: Le texte contenant l'alias et le mot de passe de l'utilisateur.
+            :type text: str
+            :param client_socket: Le socket du client essayant de se connecter.
+            :type client_socket: socket.socket
+            """
         if text.startswith("LOGIN"):
             alias = text.split("/")[1]
             password = text.split("/")[2]
@@ -477,6 +672,17 @@ class Server:
 
 
 if __name__ == '__main__':
+    """
+        Point d'entrée principal du script serveur.py.
+
+        Ce script initialise et démarre le serveur de discussion. Il prend deux arguments en ligne de commande : 
+        l'adresse IP sur laquelle le serveur doit écouter et le port sur lequel le serveur doit accepter les connexions.
+
+        Exemple d'utilisation : 
+        python serveur.py 127.0.0.1 5555
+
+        Si les arguments ne sont pas fournis correctement, le script affiche un message d'usage et se termine.
+        """
     if len(sys.argv) != 3:
         print("Utilisation: python serveur.py <adresse_ip> <port>")
         sys.exit(1)

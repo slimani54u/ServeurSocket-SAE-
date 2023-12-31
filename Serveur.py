@@ -12,7 +12,7 @@ Base = declarative_base()
 metadata = MetaData()
 
 # Initialisation de la base de données (MySQL pour cet exemple)
-db_connection_string = 'mysql+mysqlconnector://toto:toto@%:3306/serveur_discussion'
+db_connection_string = 'mysql+mysqlconnector://toto:toto@localhost:3306/serveur_discussion'
 engine = create_engine(db_connection_string)
 metadata.create_all(engine)
 
